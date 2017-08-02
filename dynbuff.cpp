@@ -52,8 +52,8 @@ void DynamicBuffer<T>::db__growBuffer(uint64_t requiredSize)
 		newBuffer[i] = db__buffer[i];
 
 	delete[] db__buffer;
-	db__buffer = newBuffer;
 
+	db__buffer = newBuffer;
 	db__bufferSize = newSize;
 }
 

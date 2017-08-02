@@ -21,7 +21,7 @@ class Base64 {
 
 		// Returns the size of the buffer needed to hold the
 		// decoded Base64 string
-		static uint32_t decodedSize(uint64_t inputBufferSize);
+		static uint32_t decodedSize(char *inputBuffer);
 
 		// Decodes a Base64-encoded string and writes the resulting
 		// data to outBuffer
