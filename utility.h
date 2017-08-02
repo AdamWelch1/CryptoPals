@@ -48,7 +48,7 @@ void maskNonPrintableChars(char *buffer, uint32_t length)
 	maskNonPrintableChars((uint8_t*) buffer, length);
 }
 
-uint32_t scoreEnglish(uint8_t *buffer, uint32_t length)
+uint32_t scoreEnglish(uint8_t *buffer)
 {
 	char *commonEnglish[20] = {"the", "be", "to", "of", "and", "a", "in", "that", "have", "i",
 								"it", "for", "not", "on", "with", "he", "as", "you", "do", "at"};

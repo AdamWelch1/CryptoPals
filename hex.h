@@ -21,14 +21,8 @@ class Hex {
 
 		static void decode(char *data, uint8_t *outBuffer)
 		{
-			// Convert lower-case letters to upper-case
-			for(int i = 0; data[i] != 0; i++)
-			{
-				if(data[i] >= 'a' && data[i] <= 'f')
-					data[i] -= 32;
-			}
-
 			char hexMap[] = "0123456789ABCDEF";
+			char hexMap2[] = "0123456789abcdef";
 
 			uint8_t byte = 0;
 			for(uint32_t i = 0; i < strlen(data); i++)
@@ -38,6 +32,12 @@ class Hex {
 				for(uint32_t j = 0; j < 16; j++)
 				{
 					if(data[i] == hexMap[j])
+					{
+						hexPos = j;
+						break;
+					}
+
+					if(data[i] == hexMap2[j])
 					{
 						hexPos = j;
 						break;
@@ -52,6 +52,7 @@ class Hex {
 					byte += hexPos;
 					outBuffer[i / 2] = byte;
 				}
+
 			}
 		}
 };
