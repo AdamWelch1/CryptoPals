@@ -4,8 +4,12 @@
 #include <cstdlib>
 #include <cmath>
 
+
+#include "utility.h"
 #include "b64.h"
 #include "hex.h"
+#include "xor.h"
+
 
 int main(int argc, char *argv[])
 {
@@ -13,17 +17,25 @@ int main(int argc, char *argv[])
 		printf("\n***DEBUG MODE***\n\n");
 	#endif
 
-	char hexBytes[] = "49276D206B696C6C696E6720796F757220627261696E206C696B65206120706F69736F6E6F7573206D757368726F6F6D";
-	uint8_t rawBytes[49] = {0};
+	char hexStr[] = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736";
+	uint8_t rawBuffer[34] = {0};
+	Hex::decode(hexStr, rawBuffer);
 
-	Hex::decode(hexBytes, rawBytes);
-	printf("%s\n", rawBytes);
+	for(uint32_t i = 0; i < 256; i++)
+	{
+		uint8_t copyBuffer[35] = {0};
+		memcpy(copyBuffer, rawBuffer, 34);
+		copyBuffer[34] = 0; // Forced null termination
 
-	char b64Encoded[200] = {0};
-	Base64::encode(rawBytes, 48, b64Encoded);
+		uint8_t key = i;
+		Xor::vigenere(copyBuffer, 34, &key, 1);
 
-	printf("Base64: %s\n", b64Encoded);
-	
+		maskNonPrintableChars(copyBuffer, 34);
+		uint32_t engScore = scoreEnglish(copyBuffer, 34);
+
+		if(engScore > 1)
+			printf("%lu : <%lu> : %s\n", i, engScore, copyBuffer);
+	}
 
 	printf("\n\n");
 	return 0;
