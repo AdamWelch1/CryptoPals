@@ -166,8 +166,8 @@ void Base64::decode(char *inputBuffer, uint8_t *outBuffer)
 	}
 
 	uint32_t outBufferIndex = 0;
-	// Convert our bits into 8-bit bytes
 
+	// Convert our bits into 8-bit bytes
 	for(uint32_t i = 0; i < bitsArray.length(); i += 8)
 	{
 		uint8_t byte = 0;
@@ -177,7 +177,6 @@ void Base64::decode(char *inputBuffer, uint8_t *outBuffer)
 			if(i + (7 - j) >= bitsArray.length())
 				break;
 
-		//	printf("i = %lu, j = %lu\n", (i), (7 - j));
 			uint8_t bit = bitsArray[(i) + (7 - j)];
 			byte |= (bit << j);
 		}

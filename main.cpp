@@ -5,6 +5,7 @@
 #include <cmath>
 
 #include "b64.h"
+#include "hex.h"
 
 int main(int argc, char *argv[])
 {
@@ -12,19 +13,17 @@ int main(int argc, char *argv[])
 		printf("\n***DEBUG MODE***\n\n");
 	#endif
 
-	char encoded[1000] = {0};
-	char str[] = "any carnal pleasur";
+	char hexBytes[] = "49276D206B696C6C696E6720796F757220627261696E206C696B65206120706F69736F6E6F7573206D757368726F6F6D";
+	uint8_t rawBytes[49] = {0};
 
-	Base64::encode((uint8_t*) str, strlen(str), encoded);
+	Hex::decode(hexBytes, rawBytes);
+	printf("%s\n", rawBytes);
 
-	printf(encoded);
-	printf("\n");
+	char b64Encoded[200] = {0};
+	Base64::encode(rawBytes, 48, b64Encoded);
 
-	int decodedSize = Base64::decodedSize(encoded);
-	char decoded[100] = {0};
-	Base64::decode(encoded, (uint8_t*) decoded);
-
-	printf("%lu - %s", decodedSize, decoded);
+	printf("Base64: %s\n", b64Encoded);
+	
 
 	printf("\n\n");
 	return 0;
