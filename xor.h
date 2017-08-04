@@ -17,7 +17,12 @@ class Xor {
 		static void vigenere(uint8_t *buffer, uint32_t bufferLength, uint8_t *key, uint32_t keyLength)
 		{
 			for(uint32_t i = 0; i < bufferLength; i++)
+			{
+			//	printf("%.2X ^= %.2x ", buffer[i], key[i % keyLength]);
 				buffer[i] ^= key[i % keyLength];
+			}
+
+			//printf("\n\n");
 		}
 };
 
