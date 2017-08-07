@@ -1,1 +1,3 @@
 # CryptoPals
+
+Requires libtomcrypt.
