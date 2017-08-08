@@ -5,6 +5,27 @@
 #include <cstring>
 #include "dynbuff.h"
 #include "xor.h"
+#include "aes.h"
+#include "b64.h"
+
+// Returns a single random Byte. NOT CRYPTOGRAPHICALLY SECURE
+uint8_t randomByte()
+{
+	FILE *urandom = fopen("/dev/urandom", "rb");
+	uint8_t ret = 0;
+	fread(&ret, 1, 1, urandom);
+	fclose(urandom);
+
+	return ret;
+}
+
+// Fills outBuffer with outBufferSize bytes. Again, this is NOT CRYPTOGRAPHICALLY SECURE
+void randomBytes(uint8_t *outBuffer, uint32_t outBufferSize)
+{
+	FILE *urandom = fopen("/dev/urandom", "rb");
+	fread(outBuffer, outBufferSize, 1, urandom);
+	fclose(urandom);
+}
 
 // Checks for the existence of a string within a larger string
 bool strinstr(char *needle, char *haystack)
@@ -268,5 +289,72 @@ void breakVigenere(uint8_t *buffer, uint32_t bufferSize)
 		delete[] chunks;
 	}
 }
+
+/* This function takes inBuffer and bufferSize as inputs.
+ * It encrypts the data, randomly appending between 5-10 bytes to the beginning and end of the buffer,
+ * and randomly chooses between ECB or CBC mode. It randomly generates a key upon each call.
+ * The idea here is that one is blind to the type of encryption being used each time this function is called.
+ * outBuffer is and output that is dynamically allocated and MUST BE DELETED BY THE CALLER OF THE FUNCTION.
+ * outBuffSize is also an output and is set to the size of the data in outBuffer.
+ */
+void regurgitateAES(uint8_t *inBuffer, uint32_t bufferSize, uint8_t *&outBuffer, uint32_t &outBuffSize)
+{
+	uint8_t aesKey[16] = {0};
+	randomBytes(aesKey, 16);
+
+	uint32_t appendCount = 5 + (randomByte() % 6);
+	uint8_t appendRandom[16] = {0};
+	randomBytes(appendRandom, appendCount);
+
+	uint8_t *inBuff = new uint8_t[bufferSize + (appendCount * 2) + 16];
+	memcpy(inBuff, appendRandom, appendCount);
+	memcpy(inBuff+appendCount, inBuffer, bufferSize);
+	randomBytes(appendRandom, appendCount);
+	memcpy(inBuff+bufferSize+appendCount, appendRandom, appendCount);
+
+	uint32_t ibSize = (bufferSize + (appendCount * 2));
+
+	if(randomByte() % 2 == 0)
+	{ // ECB
+		printf("Using ECB\n");
+
+		uint32_t paddedSize = (ibSize % 16 != 0) ? AES::pkcs7_pad(inBuff, ibSize) : ibSize;
+		outBuffer = new uint8_t[paddedSize];
+		AES::AES128_ecb_encrypt((char*) aesKey, inBuff, outBuffer, (paddedSize / 16));
+		outBuffSize = paddedSize;
+
+	} else { // CBC
+
+		printf("Using CBC\n");
+		outBuffSize = AES::AES128_cbc_encrypt((char*) aesKey, inBuff, inBuff, ibSize);
+		outBuffer = new uint8_t[outBuffSize];
+		memcpy(outBuffer, inBuff, outBuffSize);
+
+	}
+}
+
+void breakME(uint8_t *prepend, uint32_t ppLength, uint8_t *&outBuffer, uint32_t &outputSize)
+{
+	uint8_t unknownB64[] = "Um9sbGluJyBpbiBteSA1LjAKV2l0aCBteSByYWctdG9wIGRvd24gc28gbXkgaGFpciBjYW4gYmxvdwpUaGUgZ2lybGllcyBvbiBzdGFuZGJ5IHdhdmluZyBqdXN0IHRvIHNheSBoaQpEaWQgeW91IHN0b3A/IE5vLCBJIGp1c3QgZHJvdmUgYnkK";
+
+	uint32_t unkStrSize = Base64::decodedSize((char*) unknownB64);
+	uint8_t *unkStr = new uint8_t[unkStrSize];
+	Base64::decode((char*) unknownB64, unkStr);
+
+	outBuffer = new uint8_t[ppLength + unkStrSize + 16];
+	memcpy(outBuffer, prepend, ppLength);
+	memcpy(outBuffer+ppLength, unkStr, unkStrSize);
+
+	outputSize = ppLength + unkStrSize;
+
+	uint32_t paddedSize = (outputSize % 16 != 0) ? AES::pkcs7_pad(outBuffer, outputSize) : outputSize;
+	outputSize = paddedSize;
+
+	char aesKey[17] = "YELLOW SUBMARINE";
+	AES::AES128_ecb_encrypt(aesKey, outBuffer, outBuffer, (outputSize / 16));
+
+	delete[] unkStr;
+}
+
 
 #endif
