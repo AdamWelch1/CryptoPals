@@ -356,5 +356,22 @@ void breakME(uint8_t *prepend, uint32_t ppLength, uint8_t *&outBuffer, uint32_t 
 	delete[] unkStr;
 }
 
+void printHexBlocks(uint8_t *buffer, uint32_t bufferSize)
+{
+	uint32_t blockNumber = 1;
+	for(uint32_t i = 0; i < bufferSize; i++)
+	{
+		if(i > 0 && i % 16 == 0)
+			printf("\n");
+
+		if(i % 16 == 0)
+			printf("%3lu: ", blockNumber++);
+
+		printf("%.2x ", buffer[i]);
+	}
+
+	printf("\n\n");
+}
+
 
 #endif

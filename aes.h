@@ -103,6 +103,7 @@ class AES {
 			uint8_t lastByte = outBuffer[inBuffSize-1];
 			uint32_t retSize = inBuffSize;
 
+			/*
 			// Remove any padding
 			bool padded = true;
 			for(uint32_t i = (inBuffSize - lastByte); i < inBuffSize; i++)
@@ -119,7 +120,7 @@ class AES {
 				retSize = inBuffSize - lastByte;
 				outBuffer[retSize] = 0;
 			}
-
+			*/
 			return retSize;
 		}
 
@@ -139,6 +140,40 @@ class AES {
 				buffer[dataSize+i] = padByte;
 
 			return (dataSize + padCount);
+		}
+
+		static bool checkPadding(uint8_t *buffer, uint32_t bufferSize)
+		{
+			uint8_t lastByte = buffer[bufferSize-1];
+
+			if(lastByte == 0)
+				return false;
+
+			bool isValid = true;
+			for(uint32_t i = 0; i < lastByte; i++)
+			{
+				if(buffer[bufferSize - 1 - i] != lastByte)
+				{
+					isValid = false;
+					break;
+				}
+			}
+
+			return isValid;
+		}
+
+		static uint32_t stripPadding(uint8_t *buffer, uint32_t bufferSize)
+		{
+			if(checkPadding(buffer, bufferSize) == false)
+				return bufferSize;
+
+			uint8_t lastByte = buffer[bufferSize - 1];
+			uint32_t retSize = bufferSize - lastByte;
+
+			for(uint32_t i = 0; i < lastByte; i++)
+				buffer[bufferSize - 1 - i] = 0;
+
+			return retSize;
 		}
 };
 

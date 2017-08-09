@@ -14,37 +14,17 @@
 #include "fileio.h"
 #include "aes.h"
 
-struct kvpData {
+bool paddingCheck(uint8_t *aesKey, uint8_t *encData, uint8_t encSize)
+{
+	uint8_t *decData = new uint8_t[encSize];
+	AES::AES128_cbc_decrypt((char*) aesKey, encData, decData, encSize);
 
-	kvpData(uint8_t *p, uint8_t *c)
-	{
+	bool retVal = AES::checkPadding(decData, encSize);
 
-		memcpy(plainText, p, 16);
-		memcpy(cypherText, c, 16);
+	delete[] decData;
 
-
-		plainText[16] = 0;
-		cypherText[16] = 0;
-	}
-
-	bool find(uint8_t *cText)
-	{
-		bool found = true;
-		for(uint32_t i = 0; i < 16; i++)
-		{
-			if(cypherText[i] != cText[i])
-			{
-				found = false;
-				break;
-			}
-		}
-
-		return found;
-	}
-
-	uint8_t plainText[17];
-	uint8_t cypherText[17];
-};
+	return retVal;
+}
 
 int main(int argc, char *argv[])
 {
@@ -52,73 +32,68 @@ int main(int argc, char *argv[])
 		printf("\n***DEBUG MODE***\n\n");
 	#endif
 
-	// Get the block size of the encrypted data
-	uint32_t unkBlockCount;
-	uint8_t ignoreme[1] = {0};
-	uint8_t *blah;
-	breakME(ignoreme, 0, blah, unkBlockCount);
+	// Just generate a random key on each invocation
+	uint8_t aesKey[16] = {0};
+	randomBytes(aesKey, 16);
 
-	unkBlockCount /= 16;
+	// Here we're encrypting our plaintext into a buffer
+	// to be used during the "padding oracle" attack
 
-	// Initialize our dictionary variables
-	kvpData *dictionary[256] = {0};
-	uint8_t data[17] = "AAAAAAAAAAAAAAA";
-	data[16] = 0;
+	// I added all the A's to act like an IV to the CBC encryption function
+	char plainText[] = "AAAAAAAAAAAAAAAAHow much wood would a wood chuck chuck if a wood chuck could chuck wood?";
+	uint8_t encData[100] = {0};
 
-	// Loop through each block of encrypted data
-	for(uint32_t cBlock = 0; cBlock < unkBlockCount; cBlock++)
+
+	// Encrypt the data, and set up on working buffers...
+	uint32_t encSize = AES::AES128_cbc_encrypt((char*) aesKey, (uint8_t*) plainText, encData, strlen(plainText));
+	uint8_t dataCopy[100] = {0};
+	uint8_t decodedBytes[100] = {0};
+
+	/*
+	 * Alright, here we are. The padding oracle attack works upon the idea
+	 * that flipping a bit in Block #1 will duplicate the bit error in Block #2.
+	 * By this logic, we can iterate through bytes 0-255, XORing byte X in Block #1
+	 * until we produce a valid padding byte at byte X in Block #2. Since we know
+	 * what the proper padding byte value is, we can then deduce the plaintext value
+	 * of the corresponding byte based on the output of a CBC padding check function.
+	 *
+	 */
+
+	for(uint32_t cBlock = 0; cBlock < (encSize / 16 - 1); cBlock++)
 	{
-		uint8_t testData[17] = "AAAAAAAAAAAAAAA";
-
-		// Loop through each byte of the current block
-		for(uint32_t x = 0; x < 16; x++)
+		for(uint32_t j = 0; j < 16; j++)
 		{
-			// Build up our dictionary
-			for(uint32_t i = 0; i < 256; i++)
-			{
-				uint8_t byte = i;
-				data[15] = i;
-		
-				uint8_t *result = 0;
-				uint32_t resSize = 0;
-		
-				breakME(data, 16, result, resSize);
-		
-				dictionary[i] = new kvpData(data, result);
-			}
-		
-			// Send our testData block to be encrypted by the algorithm
-			uint8_t *unknownData = 0;
-			uint32_t unkDataSize = 0;
+			memcpy(dataCopy, encData, encSize);
 
-			testData[15 - x] = 0;
-			//printf("testData: %s\n", testData);
-			breakME(testData, (15 - x), unknownData, unkDataSize);
-			
-			// Compary unknownData+(cBlock * 16) to our dictionary to find our next
-			// unencrypted byte of data
-			#pragma omp parallel for
-			for(uint32_t i = 0; i < 256; i++)
+			for(uint32_t i = 0; i < j; i++)
 			{
-				if(dictionary[i]->find(unknownData+(cBlock*16)) == true)
+				uint8_t xByte = j + 1;
+				dataCopy[encSize - (cBlock * 16) - (i+1) - 16] ^= (decodedBytes[encSize - (cBlock * 16) - (i+1) - 16] ^ xByte);
+			}
+
+			for(uint32_t i = ((j == 0) ? 1 : 0); i < 256; i++)
+			{
+				uint32_t index = encSize - (cBlock * 16) - (j+1) - 16;
+
+				dataCopy[index] = encData[index];
+
+				uint8_t xorByte = i;
+				dataCopy[index] ^= xorByte;
+
+				bool pcVal = paddingCheck(aesKey, dataCopy, (encSize - (cBlock * 16)));
+
+				if(pcVal)
 				{
-				//	printf("Found data in dictionary: %s\n", dictionary[i]->plainText);
-
-					data[15] = dictionary[i]->plainText[15];
-					printf("%c", data[15]); // Print out the unencrypted byte that we just found
-					for(uint32_t j = 0; j < 15; j++)
-					{
-						data[j] = data[j + 1];
-					}
+					decodedBytes[index] = xorByte ^ (j + 1);
+					break;
 				}
-
-				delete dictionary[i];
 			}
-
-			delete[] unknownData;
 		}
-
 	}
+
+	AES::stripPadding(decodedBytes, encSize);
+	printf("Recovered plaintext:\n%s", decodedBytes);
 	printf("\n\n");
 	return 0;
 }
+
